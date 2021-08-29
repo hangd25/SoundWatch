@@ -105,8 +105,12 @@ public class DataLayerListenerService extends WearableListenerService {
     public static final String SOUND_UNSNOOZE_FROM_WATCH_PATH = "/SOUND_UNSNOOZE_FROM_WATCH_PATH";
 
     private Interpreter tfLite;
-    //    private static final String MODEL_FILENAME = "file:///android_asset/example_model.tflite";
-    private static final String MODEL_FILENAME = "file:///android_asset/sw_model_v2.tflite";
+    private static final String FIRST_MODEL = "file:///android_asset/example_model.tflite";
+    private static final String SW_MODEL_V2 = "file:///android_asset/sw_model_v2.tflite";
+    private static final String NEW_BATCH_32x64 = "file://android_asset/new_batch_32x64.tflite";
+    private static final String NEW_BATCH_64x96 = "file://android_asset/new_batch_96x64.pb";
+
+    private static final String MODEL_FILENAME = NEW_BATCH_32x64;
     private static final String LABEL_FILENAME = "file:///android_asset/labels.txt";
 
     // must match with Wearable.SoundRecorder
