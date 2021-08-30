@@ -107,11 +107,13 @@ public class DataLayerListenerService extends WearableListenerService {
     private Interpreter tfLite;
     private static final String FIRST_MODEL = "file:///android_asset/example_model.tflite";
     private static final String SW_MODEL_V2 = "file:///android_asset/sw_model_v2.tflite";
-    private static final String NEW_BATCH_32x64 = "file://android_asset/new_batch_32x64.tflite";
-    private static final String NEW_BATCH_64x96 = "file://android_asset/new_batch_96x64.pb";
+    private static final String NEW_BATCH_32x64 = "new_batch_32x64.tflite";
+    private static final String NEW_BATCH_64x96 = "new_batch_96x64_15600.tflite";
 
-    private static final String MODEL_FILENAME = NEW_BATCH_32x64;
-    private static final String LABEL_FILENAME = "file:///android_asset/labels.txt";
+    private static final String MODEL_FILENAME = NEW_BATCH_64x96;
+//    private static final String LABEL_FILENAME = "file:///android_asset/labels.txt";
+    private static final String LABEL_FILENAME = "labels.txt";
+
 
     // must match with Wearable.SoundRecorder
     private static final int RECORDING_RATE = 16000; // (Hz == number of sample per second
@@ -119,7 +121,7 @@ public class DataLayerListenerService extends WearableListenerService {
     //  that's equivalent to ~330ms of data with recording rate of 16kHz;
     //  for model v2, the buffer size is intended to be ~320ms
     // FIXME: try 16k buffer (~1sec) and average 3 predictions
-    private static final int bufferElements2Rec = 5360;
+    private static final int bufferElements2Rec = 15600;
     private final List<String> labels = new ArrayList<>();
     private int numLabels;
     //    private double dbTotal = 0;
@@ -172,7 +174,8 @@ public class DataLayerListenerService extends WearableListenerService {
         Log.i(TAG, "Audio Transmission style: " + MainActivity.AUDIO_TRANMISSION_STYLE);
 
         // Load labels
-        String actualLabelFilename = LABEL_FILENAME.split("file:///android_asset/", -1)[1];
+//        String actualLabelFilename = LABEL_FILENAME.split("file:///android_asset/", -1)[1];
+        String actualLabelFilename = LABEL_FILENAME;
         BufferedReader br;
         try {
             br = new BufferedReader(new InputStreamReader(getAssets().open(actualLabelFilename)));
@@ -188,11 +191,12 @@ public class DataLayerListenerService extends WearableListenerService {
         }
 
         // Load model
-        String actualModelFilename = MODEL_FILENAME.split("file:///android_asset/", -1)[1];
+//        String actualModelFilename = MODEL_FILENAME.split("file:///android_asset/", -1)[1];
+        String actualModelFilename = MODEL_FILENAME;
         try {
             tfLite = new Interpreter(loadModelFile(getAssets(), actualModelFilename));
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Problem reading label file of " + actualModelFilename, e);
         }
         SharedPreferences sharedPref = PreferenceManager
                 .getDefaultSharedPreferences(this);
@@ -370,16 +374,16 @@ public class DataLayerListenerService extends WearableListenerService {
                                 for (short num : shorts) {
                                     // load up enough bufferElements2Rec samples, then predict
                                     if (soundBuffer.size() == bufferElements2Rec) {
-//                                        if (soundSecondCounter == 1) {
-//                                            // Skip ~330ms seconds to accommodate latency
-//                                            predictSoundsFromRawAudio();
-//                                            soundSecondCounter = 0;
-//                                        } else {
-//                                            soundSecondCounter++;
-//                                            soundBuffer = new ArrayList<>();
-//                                        }
-                                        // (new model) not skipping
-                                        predictSoundsFromRawAudio();
+                                        if (soundSecondCounter == 1) {
+                                            // Skip ~330ms seconds to accommodate latency
+                                            predictSoundsFromRawAudio();
+                                            soundSecondCounter = 0;
+                                        } else {
+                                            soundSecondCounter++;
+                                            soundBuffer = new ArrayList<>();
+                                        }
+//                                        // (new model) not skipping
+//                                        predictSoundsFromRawAudio();
                                     }
                                     soundBuffer.add(num);
                                 }
@@ -393,16 +397,16 @@ public class DataLayerListenerService extends WearableListenerService {
                             if (soundBuffer.size() < bufferElements2Rec) {
                                 for (short num : shorts) {
                                     if (soundBuffer.size() == bufferElements2Rec) {
-//                                        if (soundSecondCounter == 1) {
-//                                            // Skip 1 seconds to accommodate latency
-//                                            predictSoundsFromRawAudio();
-//                                            soundSecondCounter = 0;
-//                                        } else {
-//                                            soundSecondCounter++;
-//                                            soundBuffer = new ArrayList<>();
-//                                        }
-                                        // (new model) not skipping
-                                        predictSoundsFromRawAudio();
+                                        if (soundSecondCounter == 1) {
+                                            // Skip 1 seconds to accommodate latency
+                                            predictSoundsFromRawAudio();
+                                            soundSecondCounter = 0;
+                                        } else {
+                                            soundSecondCounter++;
+                                            soundBuffer = new ArrayList<>();
+                                        }
+//                                        // (new model) not skipping
+//                                        predictSoundsFromRawAudio();
                                     }
                                     soundBuffer.add(num);
                                 }
@@ -773,28 +777,36 @@ public class DataLayerListenerService extends WearableListenerService {
             Log.d(TAG, "2. DB of data: " + decibel + "| DB_thresh: " + DBLEVEL_THRES);
             if (decibel >= DBLEVEL_THRES) {
                 // extract audio features from raw bytes
-                input1D = extractAudioFeatures(sData);
-                if (input1D == null) {
-                    return "Empty MFCC features, or something went wrong";
-                }
-                System.out.println("input1D is " + Arrays.toString(input1D));
-
-                // Resize to dimensions of model input
-                int count = 0;
-                for (int j = 0; j < NUM_FRAMES; j++) {
-                    for (int k = 0; k < NUM_BANDS; k++) {
-                        input3D[0][j][k] = input1D[count];
-                        count++;
-                    }
-                }
-
+//                input1D = extractAudioFeatures(sData);
+//                if (input1D == null) {
+//                    return "Empty MFCC features, or something went wrong";
+//                }
+//                System.out.println("input1D is " + Arrays.toString(input1D));
+//
+//                // Resize to dimensions of model input
+//                int count = 0;
+//                for (int j = 0; j < NUM_FRAMES; j++) {
+//                    for (int k = 0; k < NUM_BANDS; k++) {
+//                        input3D[0][j][k] = input1D[count];
+//                        count++;
+//                    }
+//                }
+//
                 long startTime = 0;
                 if (TEST_MODEL_LATENCY)
                     startTime = System.currentTimeMillis();
                 Log.i(TAG, "Elapsed time from watch to model on phone: " + (System.currentTimeMillis() - recordTime));
 
-                // Run inference
-                tfLite.run(input3D, output);
+//                // Run inference
+//                tfLite.run(input3D, output);
+
+                float[] input15600 = new float[sData.length];
+                for (int i = 0; i < sData.length; i++) {
+                    input15600[i] = sData[i];
+                }
+
+                // run inference
+                tfLite.run(input15600, output);
 
                 System.out.println("=====output is " + Arrays.toString(output));
 
@@ -1054,7 +1066,7 @@ public class DataLayerListenerService extends WearableListenerService {
         StringBuilder singleLine = new StringBuilder();
         int count = 0;
         for (SoundPrediction prediction : predictions) {
-            if (prediction.getAccuracy() >= 0.2) {
+            if (prediction.getAccuracy() >= PREDICTION_THRES) {
                 count++;
                 singleLine.append(prediction.getLabel()).append("_").append(prediction.getAccuracy()).append(";");
             }
